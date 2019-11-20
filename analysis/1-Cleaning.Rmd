@@ -1,0 +1,139 @@
+---
+title: "Cleaning"
+author: "Florian Hartig"
+date: "1/28/2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readxl) # read_excel
+# note - read_excel was changed, which improved results of importing data in various places, however, this also made it neccessary to reverse hacks, such as removing lines etc. from the code around Nov 2019
+library(tidyr)
+library(reshape2)
+
+genDist = list()
+
+for (i in 1:12){
+  genDist[[i]] <- read_excel("../data/MR_FW_Genetische Distanzmatrizen.xlsx", sheet = i)
+  names = genDist[[i]][,9]
+  genDist[[i]] = as.matrix(genDist[[i]][,1:8])
+  row.names(genDist[[i]]) = as.matrix(names)[,1]
+}
+
+plots <- read_excel("../data/MR_FW_Gesamtdaten.xlsx",  sheet = 2, skip = 2)
+str(plots)
+plots$Art = as.factor(plots$Art )
+
+lab = c("D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8")
+
+plots$Population = factor(plots$Population, labels =  lab)
+plots$Habitat = as.factor(plots$Habitat)
+
+###### Site attributes
+
+sites = list()
+geoDist = as.matrix(read_excel("../data/MR_FW_Geographische Distanzmatrizen.xlsx", sheet = 4)[,2:17])
+row.names(geoDist) = colnames(geoDist)
+geoDist[upper.tri(geoDist, diag = FALSE)] = t(geoDist)[upper.tri(geoDist, diag = FALSE)]
+sites$geoDist = geoDist
+# distance matrix
+sites$alpha = as.data.frame(read_excel("../data/MR_FW_Geographische Distanzmatrizen.xlsx", sheet = 3))
+
+sites$alpha = cbind(sites$alpha, plots[seq(1, by = 6, length.out = 16), c(1, 12:16)])
+
+sites$alpha$Plot = levels(plots$Population)
+
+
+#char2dms(populations$attributes$East)
+#library("sp")
+#?char2dms
+
+
+
+######### Community matrix ##############################
+
+community = list()
+
+for (i in 1:16){
+  community[[i]] <- data.frame(read_excel("../data/MR_FW_Vegetationsaufnahmen.xlsx", col_names = FALSE, skip = 12, sheet = i, na = "-"))
+  index = which(community[[i]][,2] == "Anzahl Arten:")
+  community[[i]] <- community[[i]][1:(index -2), ]
+  names = community[[i]][,2]  
+  community[[i]] <- community[[i]][, 3:12]
+  community[[i]] = as.matrix(community[[i]])
+  rownames(community[[i]]) = trimws(names)
+  community[[i]][is.na(community[[i]])] = 0 
+  if(any(duplicated(names))) stop("ee")
+}
+
+jointMat = data.frame(species = rownames(community[[1]]), apply(community[[1]], 1, sum), stringsAsFactors = F)
+colnames(jointMat)[2] = sites$alpha$Plot[1]
+
+for (i in 2:16){
+  temp = data.frame(species = rownames(community[[i]]), apply(community[[i]], 1, sum), stringsAsFactors = F)
+  colnames(temp)[2] = sites$alpha$Plot[i]
+  jointMat = merge(jointMat, temp, by = "species", all = T)
+}
+jointMat[is.na(jointMat)] = 0 
+names = jointMat$species
+jointMat = jointMat[-1]
+row.names(jointMat) = names
+jointMat = t(jointMat)
+
+#########################################################################
+# Checking of taxonomic names - resolved
+# library(taxize)
+# x = tnrs(query = names, source = "iPlant_TNRS")
+# write.table(x, file = "out.txt")
+
+singleMat = data.frame(species = rownames(community[[1]]), community[[1]],stringsAsFactors = F)
+colnames(singleMat)[2:11] = paste(sites$alpha$Plot[1], "-", 1:10, sep = "")
+for (i in 2:16){
+  temp = data.frame(species = rownames(community[[i]]), community[[i]],stringsAsFactors = F)
+  temp$species[duplicated(temp$species)] = paste(temp$species[duplicated(temp$species)], 1:sum(duplicated(temp$species)))
+  colnames(temp)[2:11] = paste(sites$alpha$Plot[i], "-", 1:10, sep = "")
+  singleMat = merge(singleMat, temp, by = "species", all = T)
+}
+singleMat[is.na(singleMat)] = 0 
+names = singleMat$species
+singleMat = singleMat[-1]
+row.names(singleMat) = names
+singleMat = t(singleMat)
+
+m = matrix(nrow = nrow(sites$alpha), ncol = 10)
+
+for(i in 1:16){
+  for (j in 1:ncol(community[[i]])){
+    m[i,j] = sum(community[[i]][,j] > 0)
+  }
+}
+
+sites$alpha = cbind(sites$alpha, m)
+sites$alpha$meanAlpha = rowMeans(m)
+sites$alpha2 = melt(sites$alpha[,c(1,4:6, 10:19)], id.vars=c("Plot", "Habitat", "HA (m²)", "Distanz" ), variable.name="Measurement",
+                    value.name="alpha")
+
+  
+sites$genAlpha = plots
+sites$genBeta = genDist
+sites$community = jointMat
+
+```
+
+
+```{r}
+str(sites)
+```
+
+
+```{r}
+save(sites, file = "../data/cleaned.RData")
+```
+
