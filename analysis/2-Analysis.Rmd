@@ -1,21 +1,23 @@
 ---
-title: "Species and genetic diversity patterns show diverging responses to land use intensity in central European grasslands"
-author: "Reisch & Hartig, Supplementary Material S2"
-abstract: "This document contains the results from the data analysis of Reisch & Hartig, Species and genetic diversity patterns show diverging responses to land use intensity in central European grasslands. The complete analysis, code and data is available at https://github.com/florianhartig/Reisch-Hartig-2020"
+title: "Reisch & Hartig, Supplementary Material S2 - code and additional results"
+author: "For: Species and genetic diversity patterns show diverging responses to land use intensity in central European grasslands"
+abstract: "This document contains code and additional results from the data analysis of Reisch & Hartig: Species and genetic diversity patterns show diverging responses to land use intensity in central European grasslands. The complete analysis, code and data is available at https://github.com/florianhartig/Reisch-Hartig-2021. Note that habitats are occasionally abbreviated with German words MR (Magerrasen) = dry grassland, FW (Fettwiese) = Hay Meadow, because this is the coding used in the raw data."
 date: "7/20/2017"
 output: 
   pdf_document: 
     toc: yes
+    highlight: tango
   html_document: 
     toc: yes
 editor_options: 
   chunk_output_type: console
 ---
 
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.height = 6, tidy = T)
+knitr::opts_chunk$set(echo = TRUE, fig.width = 4, fig.height = 4, 
+                      tidy = F, warning = F, message = F, fig.align = "center")
 ```
+
 
 ```{r, message=F, warning=F, echo = F}
 load(file = "../data/cleaned.RData")
@@ -24,19 +26,19 @@ library(lme4)
 library(lmerTest)
 library(vegan)
 library(betapart)
+
+set.seed(123)
 ```
 
-# 
-
-Notes: habitats are occasionally abbreviate with German words MR (Magerrasen) = dry grassland, FW (Fettwiese) = Hay Meadow. 
-
 # Analysis of alpha diversity  
+
+In the first section of this analysis, we look at differences of local (alpha) species and genetic diversity between habitats. 
 
 ## Species alpha 
 
 Looking at species alpha diversity, we see a clear habitat pattern in which dry grasslands have higher local species richness (this is Fig. 2 in main paper)
 
-```{r, echo = F}
+```{r, fig.height=6, fig.width=8}
 
 plot(alpha ~ as.factor(Plot) , data = sites$alpha2, 
      ylab = "Species richness", xlab = "", 
@@ -50,31 +52,31 @@ beeswarm(alpha ~ as.factor(Plot) , data = sites$alpha2,
 
 ```
 
-Regression to test for the dependence of alpha on all predictors confirms the effect of habitat
+Regression to test for the dependence of alpha on all predictors confirms that these differences are significant
 
-```{r, echo = F}
+```{r, }
 alphaT = glmer(alpha ~ Habitat + scale(Distanz) + scale(`HA (m²)`) 
                +  (1|Plot), data = sites$alpha2, family = poisson)
 summary(alphaT)
 ```
 
-We did some further tests to explore possible nonlinear confounding with other predictors, but didn't see an issue that would question theses results
+We did some further plots to explore possible nonlinear confounding with other predictors, but didn't see an issue that would question theses general result that species diversity is higher in dry grasslands.
 
-```{r, echo = F}
+```{r, fig.height=3.7, fig.width=6.5}
 par(mfrow = c(1,2))
 plot(alpha ~ Distanz , data = sites$alpha2, col = as.numeric(Habitat))
 plot(alpha ~ log10(`HA (m²)`) , data = sites$alpha2, col = as.numeric(Habitat))
 ```
 
-
-Our conclusion the main factor associated with species alpha is habitat (dry grassland has higher tax alpha). 
-
+Our conclusion the main factor associated with species alpha is habitat (dry grassland has higher species alpha). 
 
 ## Genetic alpha
 
-We consider genetic alpha diversity (measured in SSWP/n-1) for the 6 species each in the dry and mesic grasslands against the frequency (FR) of subplots in which the species was found. The dashed line in each plot shows a linear regression estimate across all species in a given habitat, the solid lines show linear regression estimate per species. 
+As a measure of genetic diversity, we consider AMOVA sums of squares divided by n-1 (here: SSWP/n-1). The advantage of this metric is that it is more independent of sample size than alternatives. For an analysis using an alternative metric, see below. 
 
-```{r, echo = F}
+To analyze differences across habitats, we first plot SSWP/n-1 for the 6 species each in the dry and mesic grasslands against the frequency (FR) of subplots in which the species was found. The dashed line in each plot shows a linear regression estimate across all species in a given habitat, the solid lines show linear regression estimate per species. 
+
+```{r, fig.width= 9, fig.height = 5}
 par(mfrow = c(1,2))
 plot(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Magerrasen",], 
      main = "Dry grasslands", pch = as.numeric(Art), xlab = "Frequency", 
@@ -94,11 +96,9 @@ for(sp in species){
 
 legend("topleft", legend = species, pch=as.numeric(species), cex = 0.8 )
 
-
 plot(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Fettwiese",], 
      main = "Hay Meadows", pch = as.numeric(Art), xlab = "Frequency", 
      ylab = "Genetic diversity [SSWP/n-1]", ylim = c(0,70))
-
 
 fit <- lm(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Fettwiese",])
 abline(fit, lty = 2)
@@ -115,138 +115,202 @@ for(sp in species){
 legend("topleft", legend = species, pch=as.numeric(species), cex = 0.8 )
 ```
 
-The comparison suggests that genetic diversity differs little within species, and apparent correlations between FR and genetic diversity occur because of a confounding of FR with species. To seperate these effects, we calculated linear mixed models, with population and species as random intercepts. 
+The comparison suggests that genetic diversity differs little within species, and apparent correlations between FR and genetic diversity occur because of a confounding of FR with species. To separate these effects, we calculated linear mixed models, with population and species as random intercepts. 
 
-```{r, echo = F}
+```{r, }
 full <- lmer(`SSWP/n-1` ~  Habitat * scale(FR) + scale(`HA (m²)`) +
                scale(Distanz) + (1|Population) + (1|Art) ,  data = 
                sites$genAlpha, REML = F)
 summary(full)
 ```
 
-Which showed that none of the factors are significant. Habitat is also not significant in a single regression, as long as species identity is included as a random intercept. 
+In the results, none of the considered predictors is significant. Habitat is also not significant in a single regression, as long as species identity is included as a random intercept. 
 
-```{r, echo = F}
+```{r, }
 full <- lmer(`SSWP/n-1` ~ Habitat + (1|Population) + (1|Art),  
              data = sites$genAlpha, REML = F)
 summary(full)
 ```
 
-However, species is obviously a signficant predictor for both genetic diversity. The problem is that species is perfectly collinear with habitat, and closely colinear with FR, so that it's difficult to separate these effects. 
+However, species (in the data called "Art") is obviously a significant predictor for genetic diversity, and taken as a single fixed effect, it is a significant predictor.  
 
-```{r, echo = F}
+```{r, }
 fit <- lmer(`SSWP/n-1` ~  Art + (1|Population)  ,  data = sites$genAlpha)
 anova(fit)
 ```
 
-Both habitat and frequency would be siginficant when not controlling for species identity, but given the previous results, and the apparent collinearity between species identity and other factors, this seems statistically not sensible. 
+The problem is that species is perfectly collinear with habitat, and closely collinear with FR, so that it's difficult to separate whether effects are really coming from the habitat (via the species that are in there), or via the current random selection of species. In fact, both habitat and frequency would be significant when not controlling for species identity, but given the previous results, and the clear collinearity between species identity and other factors, interpreting this results causally seems statistically invalid to us. 
 
-```{r, echo = F}
+```{r, }
 full <- lmer(`SSWP/n-1` ~  Habitat * scale(FR) + scale(`HA (m²)`) 
              + scale(Distanz) + (1|Population)  ,  
              data = sites$genAlpha, REML = F)
 summary(full)
 ```
 
-In fact, it seems that both the habitat effects and the frequency effects in the latter regression are essentially driven by species identity, in that some species simply have a higher diversity, or at least there are not enough species to separate between an effect of species identity, and true FR / Habitat effects. 
+Rather, as noted before, it seems that both the habitat effects and the frequency effects in the latter regression are essentially driven by species identity, in that some species simply have a higher diversity, or at least there are not enough species to separate between an effect of species identity, and true FR / Habitat effects. 
 
-To confirm that intutition, we additinally calculated a t-test between the average genetic diversity values per species for each habitat (n=6 for each group) 
+To confirm that intuition, we additionally calculated a t-test between the average genetic diversity values per species for each habitat (n=6 for each group) 
 
-```{r, echo = F}
+```{r, }
 x = aggregate(`SSWP/n-1` ~ Art + Habitat, FUN = mean, data = sites$genAlpha)
 t.test(`SSWP/n-1` ~ Habitat, data = x)
 ```
 
 The results show that habitat effects are n.s. when comparing only mean genetic diversity per species between habitat (i.e. n=6 per group).
 
-Moreover, the colinearity between FR and Species is created by the fact that the species with higher FR range also seem to have higher genetic diversity, although there is no significant correlation between FR and genetic diversity within species.
+Moreover, the collinearity between FR and Species is created by the fact that the species with higher FR range also seem to have higher genetic diversity, although there is no significant correlation between FR and genetic diversity within species.
 
 To test if this relationship is significant, we correlated mean FR and mean genetic diversity per species
 
-```{r, echo = F}
+```{r, }
 x1 = aggregate(`SSWP/n-1` ~ Art, FUN = mean, data = sites$genAlpha)
 x2 = aggregate(FR ~ Art, FUN = mean, data = sites$genAlpha)
 cor.test(x1$`SSWP/n-1`, x2$FR)
 ```
 
-The relationship was again n.s. However, given the small sample size (n=12), and the general plausibility of such an effect, we would encourage future studies to look again for such an effect. 
+The relationship was again n.s., but given the small sample size (n=12), our results do not exclude that such an effect exists. Given the general plausibility of such a relationship, we would encourage future studies with larger sample sizes to look again for such an effect.
+
+### Alternative measure of genetic alpha diversity (gene diversity / H)
+
+We decided to analyze genetic alpha diversity by AMOVA sums of squares divided by n-1 (here: SSWP/n-1). The advantage of this metric is that it is more independent of sample size than alternatives. A reviewer suggested to also calculated the same pattern pattern for gene diversity (H). According to this measure, differences between species and habitats are less pronounced (see below), but not in disagreement with the general conclusions of our study. 
+
+```{r, fig.width= 10, fig.height = 5.5}
+par(mfrow = c(1,2))
+plot(GD ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Magerrasen",], 
+     main = "Dry grasslands", pch = as.numeric(Art), xlab = "Frequency", 
+     ylab = "Genetic diversity [GD]", ylim = c(0,0.5) )
+
+fit <- lm(GD ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Magerrasen",])
+abline(fit, lty = 2)
+
+species = unique(sites$genAlpha$Art[sites$genAlpha$Habitat == "Magerrasen"])
+for(sp in species){
+  xrange = range(sites$genAlpha$FR[sites$genAlpha$Art == sp])
+  fit <- lm(GD ~ FR , data = sites$genAlpha[sites$genAlpha$Art == sp,])
+  y1 = predict(fit, newdata = data.frame(FR = xrange[1]))
+  y2 = predict(fit, newdata = data.frame(FR = xrange[2]))
+  lines(xrange, c(y1, y2))
+}
+
+legend("topleft", legend = species, pch=as.numeric(species), cex = 0.8 )
+
+plot(GD ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Fettwiese",], 
+     main = "Hay Meadows", pch = as.numeric(Art), xlab = "Frequency", 
+     ylab = "Genetic diversity [GD]", ylim = c(0,0.5))
+
+fit <- lm(GD ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Fettwiese",])
+abline(fit, lty = 2)
+
+species = unique(sites$genAlpha$Art[sites$genAlpha$Habitat == "Fettwiese"])
+for(sp in species){
+  xrange = range(sites$genAlpha$FR[sites$genAlpha$Art == sp])
+  fit <- lm(GD ~ FR , data = sites$genAlpha[sites$genAlpha$Art == sp,])
+  y1 = predict(fit, newdata = data.frame(FR = xrange[1]))
+  y2 = predict(fit, newdata = data.frame(FR = xrange[2]))
+  lines(xrange, c(y1, y2))
+}
+
+legend("topleft", legend = species, pch=as.numeric(species), cex = 0.8 )
+```
+
 
 # Analysis of beta diversity 
 
 ## Species beta
 
-Visualization of the abundance of site / specioes, clustered by species
+Visualization of the log10 abundance of site / species, clustered by species. Green colors are rare / absent, yellow colors are small abundances, red colors are high abundances. 
 
-```{r, fig.width=10, fig.height=10, echo = F}
-heatmap(t(sites$community), Colv = NA,scale="column", col = terrain.colors(256))
+```{r, fig.width=10, fig.height=10, }
+heatmap(log10(t(sites$community)+1), Colv = NA,scale="column", col = terrain.colors(256))
 ```
 
-Test for genetic beta via multivariate homogeneity of group dispersions (variances)
+We calculate species beta via multivariate homogeneity of group dispersions (variances)
 
-```{r, echo = F}
+```{r, fig.width=5, fig.height=5}
 distSpecies = vegdist(sites$community, method="bray")
 
 mod <- betadisper(distSpecies, sites$alpha$Habitat)
 mod
-anova(mod)
-permutest(mod, pairwise = TRUE, permutations = 499)
-plot(mod, ellipse = TRUE, hull = FALSE, conf = 0.90) # 90% data ellipse
+```
+
+Plotting the results shows the clear separation of the two habitats. 
+
+```{r, fig.width=5, fig.height=5}
+plot(mod, ellipse = TRUE, hull = FALSE, conf = 0.90, xlim = c(-0.7, 0.7), ylim = c(-0.7, 0.7)) # 90% data ellipse
+```
+
+What we are mostly interest in, however, is the variation within habitat, i.e. differences of plots to the centroid. Visually:
+
+```{r}
 boxplot(mod)
 ```
 
-Additional Mantel test for spatial structure, separate for habitats
+ANOVA and permutation test confirm the visual impression that the Fettwiese is more variable. 
 
-```{r, echo = F}
-mantel(as.matrix(distSpecies)[1:8,1:8], sites$geoDist[1:8,1:8], 
-       method="pearson", permutations=999)
-mantel(as.matrix(distSpecies)[9:16,9:16], sites$geoDist[9:16,9:16], method="pearson", permutations=999)
+```{r}
+anova(mod)
+permutest(mod, pairwise = TRUE, permutations = 499)
 ```
 
-Result: FW not significant with geographic distance, but MR is probably (stronger driven by environment)
+Additional Mantel test for spatial structure, separate for habitats. First hay meadow (FW):
 
+```{r}
+mantel(as.matrix(distSpecies)[1:8,1:8], sites$geoDist[1:8,1:8], 
+       method="pearson", permutations=999)
+```
+
+then dry grasslands (MR):
+
+```{r, }
+
+mantel(as.matrix(distSpecies)[9:16,9:16], sites$geoDist[9:16,9:16], 
+       method="pearson", permutations=999)
+```
+
+Result: hay meadow not significant with geographic distance, but dry grasslands are. 
 
 ## Genetic beta
 
+For genetic beta, we consider PhiPT as measure of genetic turnover. Visual impressions for all species
+
 Genetic turnover for all species
 
-```{r, fig.width=10, fig.height=8, echo = F}
+```{r, fig.width=8, fig.height=7, }
 par(mfrow = c(3,4))
-for(i in 1:12) image(t(sites$genBeta[[i]]), col = terrain.colors(256), main = unique(sites$genAlpha$Art)[i] )
+for(i in 1:12) image(t(sites$genBeta[[i]]), col = terrain.colors(256), main = unique(sites$genAlpha$Art)[i] , axes = F)
 ```
 
-Regression PhiPT gegen Habitat
+Values of PhiPT against habitat (note: we select c(1:6, 49:54) to get 1 value per species, across sites we have identical PhiPT values)
 
-```{r, echo = F}
-boxplot(PhiPT ~  Habitat ,  data = sites$genAlpha[1:12])
-fit <- lm(PhiPT ~  Habitat ,  data = sites$genAlpha[c(1:6, 49:54),])
-summary(fit)
+```{r}
+boxplot(PhiPT ~  Habitat ,  data = sites$genAlpha[c(1:6, 49:54),])
+```
 
+t-test shows that differences are n.s.
+
+```{r, }
 t.test(sites$genAlpha$PhiPT[1:6], sites$genAlpha$PhiPT[49:54])
-
 ```
-
-PhiPT slightly higher in MR
 
 Mantel tests to test for spatial signal in genetic diversity
 
-```{r, echo = F}
+```{r, }
 # note: genetic data are ordered first the MR species, then the FW
 distSpecies = vegdist(sites$community, method="bray")
 
 outMR = rep(NA,6)
-for (i in 7:12) outMR[i-6] = mantel(sites$genBeta[[i]], sites$geoDist[1:8,1:8])$signif
+for (i in 7:12) outMR[i-6] = mantel(sites$genBeta[[i]], sites$geoDist[1:8,1:8], permutations=9999)$signif
 outMR
 
 outFW = rep(NA,6)
-for (i in 1:6) outFW[i] = mantel(sites$genBeta[[i]], sites$geoDist[9:16,9:16])$signif
+for (i in 1:6) outFW[i] = mantel(sites$genBeta[[i]], sites$geoDist[9:16,9:16], permutations=9999)$signif
 outFW
 ```
 
-Result: again, FW are all n.s., but so is MR (only one species significant), potentially slightly higher spatial effects in MR
+# Analysis of (species) gamma diversity
 
-# Analysis of gamma diversity
-
-We can only consider species gamma, there is no measure of genetic gamma diversity. 
+Regarding gamma diversity, we only considered species, as we did not see a sensible way to define absolute genetic gamma diversity 
 
 ```{r}
 countsFW = apply(sites$community[1:8,],2, sum)
@@ -256,3 +320,12 @@ sum(countsMR > 0)
 ```
 
 Result: FW has higher diversity
+
+# Reproducibility information
+
+```{r}
+sessionInfo()
+```
+
+
+

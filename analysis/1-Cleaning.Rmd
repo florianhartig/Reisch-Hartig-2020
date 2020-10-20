@@ -137,3 +137,12 @@ str(sites)
 save(sites, file = "../data/cleaned.RData")
 ```
 
+# Reproducibility information
+
+```{r}
+sessionInfo()
+```
+
+
+
+
