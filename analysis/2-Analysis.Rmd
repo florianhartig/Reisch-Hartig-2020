@@ -2,7 +2,7 @@
 title: "Reisch & Hartig, Supplementary Material S2 - code and additional results"
 author: "For: Species and genetic diversity patterns show diverging responses to land use intensity in central European grasslands"
 abstract: "This document contains code and additional results from the data analysis of Reisch & Hartig: Species and genetic diversity patterns show diverging responses to land use intensity in central European grasslands. The complete analysis, code and data is available at https://github.com/florianhartig/Reisch-Hartig-2021. Note that habitats are occasionally abbreviated with German words MR (Magerrasen) = dry grassland, FW (Fettwiese) = Hay Meadow, because this is the coding used in the raw data."
-date: "7/20/2017"
+date: "22/11/2020"
 output: 
   pdf_document: 
     toc: yes
@@ -44,13 +44,33 @@ plot(alpha ~ as.factor(Plot) , data = sites$alpha2,
      ylab = "Species richness", xlab = "", 
      col = grey.colors(2)[as.numeric(Habitat)], las = 2, notch = T)
 
-legend("topright", c("Dry grasslands", "Hay meadows"), pch = 15, col = grey.colors(2))
+legend("topright", c("Hay meadows", "Dry grasslands"), pch = 15, col = grey.colors(2))
 
 library(beeswarm)
 beeswarm(alpha ~ as.factor(Plot) , data = sites$alpha2, 
          add = T, cex = 0.5, pch = 16)
 
 ```
+
+
+```{r, eval = F, echo = F}
+
+pdf(file = "fig2.pdf", height = 7, width=9)
+
+plot(alpha ~ as.factor(Plot) , data = sites$alpha2, 
+     ylab = "Species richness", xlab = "", 
+     col = grey.colors(2)[as.numeric(Habitat)], las = 2, notch = T)
+
+legend("topright", c("Hay meadows", "Dry grasslands"), pch = 15, col = grey.colors(2))
+
+library(beeswarm)
+beeswarm(alpha ~ as.factor(Plot) , data = sites$alpha2, 
+         add = T, cex = 0.5, pch = 16)
+dev.off()
+
+```
+
+
 
 Regression to test for the dependence of alpha on all predictors confirms that these differences are significant
 
@@ -114,6 +134,53 @@ for(sp in species){
 
 legend("topleft", legend = species, pch=as.numeric(species), cex = 0.8 )
 ```
+
+
+```{r, eval = F, echo = F}
+
+pdf(file = "fig3.pdf", height = 7, width=12)
+
+par(mfrow = c(1,2))
+plot(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Magerrasen",], 
+     main = "Dry grasslands", pch = as.numeric(Art), xlab = "Frequency", 
+     ylab = "Genetic diversity [SSWP/n-1]", ylim = c(0,70) )
+
+fit <- lm(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Magerrasen",])
+abline(fit, lty = 2)
+
+species = unique(sites$genAlpha$Art[sites$genAlpha$Habitat == "Magerrasen"])
+for(sp in species){
+  xrange = range(sites$genAlpha$FR[sites$genAlpha$Art == sp])
+  fit <- lm(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Art == sp,])
+  y1 = predict(fit, newdata = data.frame(FR = xrange[1]))
+  y2 = predict(fit, newdata = data.frame(FR = xrange[2]))
+  lines(xrange, c(y1, y2))
+}
+
+legend("topleft", legend = species, pch=as.numeric(species), cex = 0.8 )
+
+plot(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Fettwiese",], 
+     main = "Hay Meadows", pch = as.numeric(Art), xlab = "Frequency", 
+     ylab = "Genetic diversity [SSWP/n-1]", ylim = c(0,70))
+
+fit <- lm(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Habitat == "Fettwiese",])
+abline(fit, lty = 2)
+
+species = unique(sites$genAlpha$Art[sites$genAlpha$Habitat == "Fettwiese"])
+for(sp in species){
+  xrange = range(sites$genAlpha$FR[sites$genAlpha$Art == sp])
+  fit <- lm(`SSWP/n-1` ~ FR , data = sites$genAlpha[sites$genAlpha$Art == sp,])
+  y1 = predict(fit, newdata = data.frame(FR = xrange[1]))
+  y2 = predict(fit, newdata = data.frame(FR = xrange[2]))
+  lines(xrange, c(y1, y2))
+}
+
+legend("topleft", legend = species, pch=as.numeric(species), cex = 0.8 )
+
+dev.off()
+```
+
+
 
 The comparison suggests that genetic diversity differs little within species, and apparent correlations between FR and genetic diversity occur because of a confounding of FR with species. To separate these effects, we calculated linear mixed models, with population and species as random intercepts. 
 
